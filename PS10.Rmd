@@ -56,9 +56,61 @@ predictor_matrix_test <- model.matrix(model_formula, data = test)[, -1]
 
 # Do work and create submission files:
 
+# lm Method:
 ```{r}
 
+#train score
+PS10_Lm <- lm(model_formula, data = train)
+
+PS10_Lm %>% 
+  broom::augment()
+
+train_score <- sqrt(sum(PS10_Lm$residuals)^2)/nrow(train)
+
+train_score
+
+
+#Kaggle:
+lm_predictions <- predict(PS10_Lm, newdata = test)
+
+price_doc <- exp(lm_predictions)
+
+lm_Submission <- test %>% 
+  mutate(price_doc) %>% 
+  select(id, price_doc)
+
+write.csv(lm_Submission, "lm_Submission.csv", row.names = F)
 ```
+
+#LASSO Method:
+```{r}
+lambda_inputs <- 10^seq(-2, 10, length = 100)
+
+LASSO_CV <- cv.glmnet(x=predictor_matrix_train, y=train$log_price_doc, alpha=1, lambda=lambda_inputs)
+
+lambda_star_1SE <- LASSO_CV$lambda.1se
+
+LASSO_fit <- glmnet(x = predictor_matrix_train, y = train$log_price_doc, alpha = 1)
+
+train_price_doc <- predict(LASSO_fit, newx = predictor_matrix_train, s = lambda_star_1SE) 
+
+train_score <- sqrt(sum(train$log_price_doc- train_price_doc)^2)/nrow(train)
+
+train_score
+
+price_doc <- predict(LASSO_fit, newx = predictor_matrix_test, s = lambda_star_1SE) 
+
+price_doc <- exp(price_doc)
+
+LASSO_Submission <- test %>% 
+  mutate(price_doc) %>% 
+  select(id, price_doc)
+  
+write.csv(LASSO_Submission, "LASSO_Submission.csv", row.names = F)
+
+
+```
+
 
 
 
@@ -72,5 +124,5 @@ in these cells:
 
 Method                | Training Score  | Kaggle Score
 --------------------- | -------------   | -------------
-lm                    |                 |  
-LASSO crossvalidated  |                 |  
+lm                    |    1.474e-17    |  2.63413
+LASSO crossvalidated  |    3.351e-15    |  0.42805
