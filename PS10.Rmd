@@ -82,7 +82,7 @@ lm_Submission <- test %>%
 write.csv(lm_Submission, "lm_Submission.csv", row.names = F)
 ```
 
-#LASSO Method:
+# LASSO Method:
 ```{r}
 lambda_inputs <- 10^seq(-2, 10, length = 100)
 
