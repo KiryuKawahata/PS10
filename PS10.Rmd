@@ -30,6 +30,7 @@ Please indicate who you collaborated with on this assignment:
 library(tidyverse)
 library(broom)
 library(glmnet)
+library(MLmetrics)
 
 train <- read_csv("data/train.csv")
 test <- read_csv("data/test.csv")
@@ -58,17 +59,12 @@ predictor_matrix_test <- model.matrix(model_formula, data = test)[, -1]
 
 # lm Method:
 ```{r}
-
 #train score
 PS10_Lm <- lm(model_formula, data = train)
 
-PS10_Lm %>% 
-  broom::augment()
-
-train_score <- sqrt(sum(PS10_Lm$residuals)^2)/nrow(train)
+train_score <- RMSLE(exp(PS10_Lm$fitted.values), train$price_doc)
 
 train_score
-
 
 #Kaggle:
 lm_predictions <- predict(PS10_Lm, newdata = test)
@@ -92,10 +88,9 @@ lambda_star_1SE <- LASSO_CV$lambda.1se
 
 LASSO_fit <- glmnet(x = predictor_matrix_train, y = train$log_price_doc, alpha = 1)
 
-train_price_doc <- predict(LASSO_fit, newx = predictor_matrix_train, s = lambda_star_1SE) 
+train_price_doc_LASSO <- predict(LASSO_fit, newx = predictor_matrix_train, s = lambda_star_1SE) 
 
-train_score <- sqrt(sum(train$log_price_doc- train_price_doc)^2)/nrow(train)
-
+train_score <- RMSLE(exp(train_price_doc_LASSO), train$price_doc)
 train_score
 
 price_doc <- predict(LASSO_fit, newx = predictor_matrix_test, s = lambda_star_1SE) 
@@ -124,5 +119,5 @@ in these cells:
 
 Method                | Training Score  | Kaggle Score
 --------------------- | -------------   | -------------
-lm                    |    1.474e-17    |  2.63413
-LASSO crossvalidated  |    3.351e-15    |  0.42805
+lm                    |    0.2534704    |  2.63413
+LASSO crossvalidated  |    0.5172888    |  0.42805

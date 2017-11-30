@@ -231,6 +231,7 @@ div.tocify {
 <pre class="r"><code>library(tidyverse)
 library(broom)
 library(glmnet)
+library(MLmetrics)
 
 train &lt;- read_csv(&quot;data/train.csv&quot;)
 test &lt;- read_csv(&quot;data/test.csv&quot;)
@@ -256,6 +257,51 @@ predictor_matrix_test &lt;- model.matrix(model_formula, data = test)[, -1]</code
 <div id="do-work-and-create-submission-files" class="section level1">
 <h1>Do work and create submission files:</h1>
 </div>
+<div id="lm-method" class="section level1">
+<h1>lm Method:</h1>
+<pre class="r"><code>#train score
+PS10_Lm &lt;- lm(model_formula, data = train)
+
+train_score &lt;- RMSLE(exp(PS10_Lm$fitted.values), train$price_doc)
+
+train_score</code></pre>
+<pre><code>## [1] 0.2534704</code></pre>
+<pre class="r"><code>#Kaggle:
+lm_predictions &lt;- predict(PS10_Lm, newdata = test)
+
+price_doc &lt;- exp(lm_predictions)
+
+lm_Submission &lt;- test %&gt;% 
+  mutate(price_doc) %&gt;% 
+  select(id, price_doc)
+
+write.csv(lm_Submission, &quot;lm_Submission.csv&quot;, row.names = F)</code></pre>
+</div>
+<div id="lasso-method" class="section level1">
+<h1>LASSO Method:</h1>
+<pre class="r"><code>lambda_inputs &lt;- 10^seq(-2, 10, length = 100)
+
+LASSO_CV &lt;- cv.glmnet(x=predictor_matrix_train, y=train$log_price_doc, alpha=1, lambda=lambda_inputs)
+
+lambda_star_1SE &lt;- LASSO_CV$lambda.1se
+
+LASSO_fit &lt;- glmnet(x = predictor_matrix_train, y = train$log_price_doc, alpha = 1)
+
+train_price_doc_LASSO &lt;- predict(LASSO_fit, newx = predictor_matrix_train, s = lambda_star_1SE) 
+
+train_score &lt;- RMSLE(exp(train_price_doc_LASSO), train$price_doc)
+train_score</code></pre>
+<pre><code>## [1] 0.5416359</code></pre>
+<pre class="r"><code>price_doc &lt;- predict(LASSO_fit, newx = predictor_matrix_test, s = lambda_star_1SE) 
+
+price_doc &lt;- exp(price_doc)
+
+LASSO_Submission &lt;- test %&gt;% 
+  mutate(price_doc) %&gt;% 
+  select(id, price_doc)
+  
+write.csv(LASSO_Submission, &quot;LASSO_Submission.csv&quot;, row.names = F)</code></pre>
+</div>
 <div id="scoreboard" class="section level1">
 <h1>Scoreboard</h1>
 <p>Using the “scoring mechanism” for the Russian Housing Kaggle competition, fill in these cells:</p>
@@ -270,13 +316,13 @@ predictor_matrix_test &lt;- model.matrix(model_formula, data = test)[, -1]</code
 <tbody>
 <tr class="odd">
 <td>lm</td>
-<td></td>
-<td></td>
+<td>0.2534704</td>
+<td>2.63413</td>
 </tr>
 <tr class="even">
 <td>LASSO crossvalidated</td>
-<td></td>
-<td></td>
+<td>0.5172888</td>
+<td>0.42805</td>
 </tr>
 </tbody>
 </table>
